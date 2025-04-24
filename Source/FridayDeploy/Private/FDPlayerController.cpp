@@ -1,16 +1,31 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "FDPlayerController.h"
 #include "FDTaskActor.h"
 #include "FDComputerActor.h"
-#include "FDPlayerController.h"
 #include "FDCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 
 AFDPlayerController::AFDPlayerController()
 {
     bCanInteract = false;
     bIsInteracting = false;
+    bReplicates = true;
+    bAlwaysRelevant = true;
+    SetNetUpdateFrequency(100.0f);
+}
+
+void AFDPlayerController::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (GetLocalRole() == ROLE_SimulatedProxy)
+    {
+        // Особые действия для клиентских копий
+        return;
+    }
 }
 
 void AFDPlayerController::SetupInputComponent()
@@ -50,7 +65,7 @@ void AFDPlayerController::MoveRight(float Value)
     }
 }
 
-void AFDPlayerController::Interact()
+void AFDPlayerController::ExecuteInteraction()
 {
     if (bCanInteract && !bIsInteracting && CurrentComputerActor && !bIsCarrying)
     {
@@ -85,6 +100,19 @@ void AFDPlayerController::Interact()
             return;
         }
     }
+}
+
+void AFDPlayerController::Interact()
+{
+    if (!IsValid(this))
+        return; // Критическая проверка
+
+    if (GetLocalRole() < ROLE_Authority)
+    {
+        Server_Interact();
+        return;
+    }
+    ExecuteInteraction();
 }
 
 void AFDPlayerController::FinishInteraction()
@@ -133,4 +161,64 @@ void AFDPlayerController::FinishInteraction()
     }
 
     bIsInteracting = false;
+}
+
+void AFDPlayerController::DropCarriedItem()
+{
+    if (bIsCarrying)
+    {
+        // Уничтожаем переносимый предмет
+        if (CurrentTaskActor)
+        {
+            CurrentTaskActor->Destroy();
+            CurrentTaskActor = nullptr;
+        }
+        // Обновляем состояние
+        bIsCarrying = false;
+
+        // Дополнительные действия при сбросе
+        // OnItemDropped.Broadcast();
+    }
+}
+
+bool AFDPlayerController::Server_Interact_Validate()
+{
+    return IsValid(this) && GetPawn() != nullptr;
+}
+
+void AFDPlayerController::Server_Interact_Implementation()
+{
+    // Выполняем взаимодействие на сервере
+    if (!IsValid(this))
+        return;
+
+    ExecuteInteraction();
+
+    // Оповещаем всех клиентов
+    Multicast_OnInteractionComplete();
+}
+
+void AFDPlayerController::Multicast_OnInteractionComplete_Implementation()
+{
+    // Код, выполняемый на всех клиентах после успешного взаимодействия
+    // Например, воспроизведение эффектов, анимаций и т.д.
+
+    // Не выполняем основную логику повторно на сервере
+    if (GetLocalRole() == ROLE_Authority)
+        return;
+
+    // Обновляем состояние на клиентах
+    ExecuteInteraction();
+}
+
+void AFDPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+    // Call the Super
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    // Add properties to replicated for the derived class
+    DOREPLIFETIME(AFDPlayerController, CurrentComputerActor);
+    DOREPLIFETIME(AFDPlayerController, bCanInteract);
+    DOREPLIFETIME(AFDPlayerController, bIsInteracting);
+    DOREPLIFETIME(AFDPlayerController, bIsCarrying);
 }

@@ -14,6 +14,9 @@ AFDComputerActor::AFDComputerActor()
 	RootComponent = InteractionVolume;
 	InteractionVolume->SetCollisionProfileName(TEXT("Trigger"));
 	InteractionVolume->SetBoxExtent(FVector(100.0f));
+
+	bReplicates = true;
+    bAlwaysRelevant = true;
 }
 
 // Called when the game starts or when spawned

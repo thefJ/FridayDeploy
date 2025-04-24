@@ -27,6 +27,10 @@ AFDCharacter::AFDCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative
 	FollowCamera->SetRelativeRotation(FRotator(0, -5, 0));
 	FollowCamera->SetRelativeLocation(FVector(0, 0, 100));
+
+	bReplicates = true;
+	bAlwaysRelevant = true;
+	SetNetUpdateFrequency(100.0f);
 }
 
 // Called when the game starts or when spawned
@@ -51,7 +55,10 @@ void AFDCharacter::NotifyActorBeginOverlap(AActor *OtherActor)
 {
 	AFDPlayerController *FDPlayerController = Cast<AFDPlayerController>(GetController());
 
-	check(FDPlayerController);
+	if (!FDPlayerController)
+	{
+		return;
+	}
 
 	if (AFDComputerActor *ComputerActor = Cast<AFDComputerActor>(OtherActor))
 	{
@@ -64,7 +71,10 @@ void AFDCharacter::NotifyActorEndOverlap(AActor *OtherActor)
 {
 	AFDPlayerController *FDPlayerController = Cast<AFDPlayerController>(GetController());
 
-	check(FDPlayerController);
+	if (!FDPlayerController)
+	{
+		return;
+	}
 
 	if (AFDComputerActor *ComputerActor = Cast<AFDComputerActor>(OtherActor))
 	{

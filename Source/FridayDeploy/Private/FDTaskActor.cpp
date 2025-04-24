@@ -9,6 +9,9 @@ AFDTaskActor::AFDTaskActor()
 	PrimaryActorTick.bCanEverTick = false;
 
 	SetActorEnableCollision(false);
+
+	bReplicates = true;
+	bAlwaysRelevant = true;
 }
 
 // Called when the game starts or when spawned

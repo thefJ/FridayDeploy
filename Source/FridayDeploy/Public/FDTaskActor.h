@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FDTaskTypes.h"
 #include "GameFramework/Actor.h"
 #include "FDTaskActor.generated.h"
 
@@ -14,6 +15,9 @@ class FRIDAYDEPLOY_API AFDTaskActor : public AActor
 public:
 	// Sets default values for this actor's properties
 	AFDTaskActor();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
+	ETaskType Type;
 
 protected:
 	// Called when the game starts or when spawned

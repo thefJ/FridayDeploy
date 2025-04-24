@@ -34,6 +34,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Carrying")
 	bool GetIsCarrying() { return bIsCarrying; }
 
+	UFUNCTION(BlueprintCallable, Category = "Carrying")
+	void DropCarriedItem();
+
+	UFUNCTION()
+	AFDTaskActor *GetCurrentTask() { return CurrentTaskActor; };
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const override;
+
 protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float TurnRate = 45.0f; // Degrees per second
@@ -44,8 +52,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Task")
 	AFDTaskActor *CurrentTaskActor;
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_Interact();
+
+	// Multicast функция для всех клиентов
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnInteractionComplete();
+
 	// Movement functions
+	UFUNCTION()
 	void MoveForward(float Value);
+
+	UFUNCTION()
 	void MoveRight(float Value);
 
 	// Interaction
@@ -63,22 +81,27 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "Interaction")
 	bool GetIsInteracting() { return bIsInteracting; }
 
-private:
+	virtual void BeginPlay() override;
+
 	// The art actor that is currently in range for the character to interact with
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadWrite, Category = "Interaction")
 	AFDComputerActor *CurrentComputerActor;
 
 	// Whether the character can interact with an art actor
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadWrite, Category = "Interaction")
 	bool bCanInteract = false;
 
 	// Whether the character is currently interacting with an art actor
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadWrite, Category = "Interaction")
 	bool bIsInteracting = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Carrying", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, Replicated, BlueprintReadWrite, Category = "Carrying")
 	bool bIsCarrying = false;
 
+private:
 	// Timer handle for the interaction timer
 	FTimerHandle InteractionTimerHandle;
+
+	UFUNCTION()
+	void ExecuteInteraction();
 };
