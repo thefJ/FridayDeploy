@@ -1,11 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "FDCharacter.h"
-#include "FDPlayerController.h"
 #include "FDComputerActor.h"
+#include "FDTaskActor.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AFDCharacter::AFDCharacter()
@@ -49,39 +50,194 @@ void AFDCharacter::Tick(float DeltaTime)
 void AFDCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (PlayerInputComponent)
+	{
+		InputComponent->BindAxis("MoveForward", this, &AFDCharacter::MoveForward);
+		InputComponent->BindAxis("MoveRight", this, &AFDCharacter::MoveRight);
+		InputComponent->BindAction("Interact", IE_Pressed, this, &AFDCharacter::Interact);
+	}
 }
 
 void AFDCharacter::NotifyActorBeginOverlap(AActor *OtherActor)
 {
-	AFDPlayerController *FDPlayerController = Cast<AFDPlayerController>(GetController());
-
-	if (!FDPlayerController)
-	{
-		return;
-	}
-
 	if (AFDComputerActor *ComputerActor = Cast<AFDComputerActor>(OtherActor))
 	{
-		FDPlayerController->SetCurrentComputerActor(ComputerActor);
-		FDPlayerController->SetBCanInteract(true);
+		CurrentComputerActor = ComputerActor;
+		bCanInteract = true;
 	}
 }
 
 void AFDCharacter::NotifyActorEndOverlap(AActor *OtherActor)
 {
-	AFDPlayerController *FDPlayerController = Cast<AFDPlayerController>(GetController());
-
-	if (!FDPlayerController)
+	if (AFDComputerActor *ComputerActor = Cast<AFDComputerActor>(OtherActor))
 	{
+		if (IsCurrentComputerActor(ComputerActor))
+		{
+			CurrentComputerActor = nullptr;
+			bCanInteract = false;
+		}
+	}
+}
+
+void AFDCharacter::MoveForward(float Value)
+{
+	if (Value != 0.0f && !bIsInteracting)
+	{
+		// Get forward vector from controller's rotation (ignoring pitch/roll)
+		const FRotator Rotation = GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		// Get forward vector and move the character
+		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		AddMovementInput(Direction, Value);
+	}
+}
+
+void AFDCharacter::MoveRight(float Value)
+{
+	if (Value != 0.0f && !bIsInteracting)
+	{
+		// Get right vector from controller's rotation (ignoring pitch/roll)
+		const FRotator Rotation = GetControlRotation();
+		const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+		// Get right vector and move the character
+		AddControllerYawInput(Value * TurnRate * GetWorld()->GetDeltaSeconds());
+	}
+}
+
+void AFDCharacter::ExecuteInteraction()
+{
+	if (bCanInteract && !bIsInteracting && CurrentComputerActor && !bIsCarrying)
+	{
+		bIsInteracting = true;
+
+		// Disable movement
+		if (GetCharacterMovement())
+		{
+			GetCharacterMovement()->DisableMovement();
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Interact: CharacterMovementComponent is null!"));
+			return;
+		}
+
+		// Start timer for 3 seconds
+		GetWorld()->GetTimerManager().SetTimer(
+			InteractionTimerHandle,
+			this,
+			&AFDCharacter::FinishInteraction,
+			BaseInteractTime,
+			false);
+	}
+}
+
+void AFDCharacter::Interact()
+{
+	if (GetLocalRole() < ROLE_Authority)
+	{
+		Server_Interact();
+		return;
+	}
+	ExecuteInteraction();
+}
+
+void AFDCharacter::FinishInteraction()
+{
+	// Enable movement
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("FinishInteraction: CharacterMovementComponent is null!"));
 		return;
 	}
 
-	if (AFDComputerActor *ComputerActor = Cast<AFDComputerActor>(OtherActor))
+	if (!CurrentComputerActor || !CurrentComputerActor->GetTaskActor())
+		return;
+	// Уничтожаем предыдущий актор, если есть
+	if (CurrentTaskActor)
 	{
-		if (FDPlayerController->IsCurrentComputerActor(ComputerActor))
-		{
-			FDPlayerController->SetCurrentComputerActor(nullptr);
-			FDPlayerController->SetBCanInteract(false);
-		}
+		CurrentTaskActor->Destroy();
 	}
+	// Создаем новый актор
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	CurrentTaskActor = GetWorld()->SpawnActor<AFDTaskActor>(CurrentComputerActor->GetTaskActor(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+	// Прикрепляем к руке
+	if (CurrentTaskActor && GetMesh())
+	{
+		CurrentTaskActor->AttachToComponent(GetMesh(),
+											FAttachmentTransformRules::KeepRelativeTransform,
+											TEXT("CarrySocket")); // Имя сокета для правой руки
+
+		bIsCarrying = true;
+	}
+
+	bIsInteracting = false;
+}
+
+void AFDCharacter::DropCarriedItem()
+{
+	if (bIsCarrying)
+	{
+		// Уничтожаем переносимый предмет
+		if (CurrentTaskActor)
+		{
+			CurrentTaskActor->Destroy();
+			CurrentTaskActor = nullptr;
+		}
+		// Обновляем состояние
+		bIsCarrying = false;
+
+		// Дополнительные действия при сбросе
+		// OnItemDropped.Broadcast();
+	}
+}
+
+bool AFDCharacter::Server_Interact_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_Interact_Implementation()
+{
+	// Выполняем взаимодействие на сервере
+	if (!IsValid(this))
+		return;
+
+	ExecuteInteraction();
+
+	// Оповещаем всех клиентов
+	Multicast_OnInteractionComplete();
+}
+
+void AFDCharacter::Multicast_OnInteractionComplete_Implementation()
+{
+	// Код, выполняемый на всех клиентах после успешного взаимодействия
+	// Например, воспроизведение эффектов, анимаций и т.д.
+
+	// Не выполняем основную логику повторно на сервере
+	if (GetLocalRole() == ROLE_Authority)
+		return;
+
+	// Обновляем состояние на клиентах
+	ExecuteInteraction();
+}
+
+void AFDCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+	// Call the Super
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Add properties to replicated for the derived class
+	DOREPLIFETIME(AFDCharacter, CurrentComputerActor);
+	DOREPLIFETIME(AFDCharacter, bCanInteract);
+	DOREPLIFETIME(AFDCharacter, bIsInteracting);
+	DOREPLIFETIME(AFDCharacter, bIsCarrying);
 }

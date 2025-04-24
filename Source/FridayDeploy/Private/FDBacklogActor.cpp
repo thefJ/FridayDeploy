@@ -3,7 +3,6 @@
 #include "FDBacklogActor.h"
 #include "FDCharacter.h"
 #include "FDTaskActor.h"
-#include "FDPlayerController.h"
 #include "Components/BoxComponent.h"
 
 // Sets default values
@@ -38,11 +37,9 @@ void AFDBacklogActor::NotifyActorBeginOverlap(AActor *OtherActor)
 	Super::NotifyActorBeginOverlap(OtherActor);
 	if (AFDCharacter *Character = Cast<AFDCharacter>(OtherActor))
 	{
-		AFDPlayerController *PlayerController = Cast<AFDPlayerController>(Character->GetController());
-
-		if (PlayerController && PlayerController->GetIsCarrying() && CanAcceptTask(PlayerController->GetCurrentTask()))
+		if (Character->GetIsCarrying() && CanAcceptTask(Character->GetCurrentTask()))
 		{
-			PlayerController->DropCarriedItem();
+			Character->DropCarriedItem();
 		}
 	}
 }
