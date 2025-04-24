@@ -3,5 +3,4 @@
 #include "FridayDeploy.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, FridayDeploy, "FridayDeploy" );
- 
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, FridayDeploy, "FridayDeploy");
