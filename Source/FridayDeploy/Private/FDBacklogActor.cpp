@@ -39,7 +39,7 @@ void AFDBacklogActor::NotifyActorBeginOverlap(AActor *OtherActor)
 	{
 		if (Character->GetIsCarrying() && CanAcceptTask(Character->GetCurrentTask()))
 		{
-			Character->DropCarriedItem();
+			Character->DropCarriedItem(Type);
 		}
 	}
 }

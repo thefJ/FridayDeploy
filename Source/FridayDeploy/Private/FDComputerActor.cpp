@@ -16,7 +16,7 @@ AFDComputerActor::AFDComputerActor()
 	InteractionVolume->SetBoxExtent(FVector(100.0f));
 
 	bReplicates = true;
-    bAlwaysRelevant = true;
+	bAlwaysRelevant = true;
 }
 
 // Called when the game starts or when spawned

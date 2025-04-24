@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "FDTaskTypes.h"
+#include "FDBacklogTypes.h"
 #include "GameFramework/Actor.h"
 #include "FDBacklogActor.generated.h"
 
@@ -16,8 +17,11 @@ public:
 	// Sets default values for this actor's properties
 	AFDBacklogActor();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Backlog")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
 	TArray<ETaskType> AcceptedTypes;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Backlog")
+	EBacklogType Type;
 
 protected:
 	// Called when the game starts or when spawned

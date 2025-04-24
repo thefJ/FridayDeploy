@@ -3,6 +3,8 @@
 #include "FDCharacter.h"
 #include "FDComputerActor.h"
 #include "FDTaskActor.h"
+#include "FDGameState.h"
+#include "Math/UnrealMathUtility.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
@@ -111,6 +113,16 @@ void AFDCharacter::ExecuteInteraction()
 {
 	if (bCanInteract && !bIsInteracting && CurrentComputerActor && !bIsCarrying)
 	{
+		int32 bugCount = GetWorld()->GetGameState<AFDGameState>()->GetTaskCountByType(ETaskType::Bug);
+		if (CurrentComputerActor->Type == ETaskType::Server && bugCount <= 0)
+		{
+			return;
+		}
+		else if (CurrentComputerActor->Type != ETaskType::PO && CurrentComputerActor->Type != ETaskType::Server && GetWorld()->GetGameState<AFDGameState>()->GetTaskCountByType(CurrentComputerActor->Type) <= 0)
+		{
+			return;
+		}
+
 		bIsInteracting = true;
 
 		// Disable movement
@@ -124,24 +136,35 @@ void AFDCharacter::ExecuteInteraction()
 			return;
 		}
 
+		float interactTime = BaseInteractTime + (BaseInteractTime * BugCoefficient * bugCount);
+		UE_LOG(LogTemp, Display, TEXT("interactTime %f"), interactTime);
+
 		// Start timer for 3 seconds
 		GetWorld()->GetTimerManager().SetTimer(
 			InteractionTimerHandle,
 			this,
 			&AFDCharacter::FinishInteraction,
-			BaseInteractTime,
+			interactTime,
 			false);
+
+		if (HasAuthority() && CurrentComputerActor->Type != ETaskType::PO)
+		{
+			if (CurrentComputerActor->Type == ETaskType::Server)
+			{
+				Server_ChangeTaskCountByType(ETaskType::Bug, -1);
+				Server_ChangeTaskCountByType(ETaskType::Server, -1);
+			}
+			else
+			{
+				Server_ChangeTaskCountByType(CurrentComputerActor->Type, -1);
+			}
+		}
 	}
 }
 
 void AFDCharacter::Interact()
 {
-	if (GetLocalRole() < ROLE_Authority)
-	{
-		Server_Interact();
-		return;
-	}
-	ExecuteInteraction();
+	Server_Interact();
 }
 
 void AFDCharacter::FinishInteraction()
@@ -182,13 +205,30 @@ void AFDCharacter::FinishInteraction()
 	bIsInteracting = false;
 }
 
-void AFDCharacter::DropCarriedItem()
+void AFDCharacter::DropCarriedItem(EBacklogType BacklogType)
 {
 	if (bIsCarrying)
 	{
 		// Уничтожаем переносимый предмет
 		if (CurrentTaskActor)
 		{
+			if (HasAuthority())
+			{
+				if (BacklogType == EBacklogType::Server)
+				{
+					Server_ChangeTaskCountByType(ETaskType::Server, 1);
+					int32 chance = CurrentTaskActor->Type == ETaskType::Testing ? BugChanceWitoutTest : BugChanceWithTest;
+					if (FMath::RandRange(0, 100) <= chance)
+					{
+						Server_ChangeTaskCountByType(ETaskType::Bug, 1);
+					}
+				}
+				else
+				{
+					Server_ChangeTaskCountByType(CurrentTaskActor->Type, 1);
+				}
+			}
+
 			CurrentTaskActor->Destroy();
 			CurrentTaskActor = nullptr;
 		}
@@ -223,7 +263,7 @@ void AFDCharacter::Multicast_OnInteractionComplete_Implementation()
 	// Например, воспроизведение эффектов, анимаций и т.д.
 
 	// Не выполняем основную логику повторно на сервере
-	if (GetLocalRole() == ROLE_Authority)
+	if (HasAuthority())
 		return;
 
 	// Обновляем состояние на клиентах
@@ -240,4 +280,17 @@ void AFDCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLife
 	DOREPLIFETIME(AFDCharacter, bCanInteract);
 	DOREPLIFETIME(AFDCharacter, bIsInteracting);
 	DOREPLIFETIME(AFDCharacter, bIsCarrying);
+}
+
+void AFDCharacter::Server_ChangeTaskCountByType_Implementation(ETaskType TaskType, int32 Value)
+{
+	if (!IsValid(this))
+		return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Server_ChangeTaskCountByType_Implementation"));
+
+	if (AFDGameState *GS = GetWorld()->GetGameState<AFDGameState>())
+	{
+		GS->ChangeTaskCountByType(TaskType, Value); // GameState сам обрабатывает репликацию
+	}
 }

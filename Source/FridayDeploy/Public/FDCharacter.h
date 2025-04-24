@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "FDBacklogTypes.h"
 #include "GameFramework/Character.h"
 #include "FDCharacter.generated.h"
 
@@ -21,17 +22,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void SetCurrentComputerActor(AFDComputerActor *ComputerActor) { CurrentComputerActor = ComputerActor; }
 
-	UFUNCTION()
-	void SetBCanInteract(bool isCanInteract) { bCanInteract = isCanInteract; };
-
 	UFUNCTION(BlueprintPure, Category = "Carrying")
 	bool GetIsCarrying() { return bIsCarrying; }
 
 	UFUNCTION(BlueprintCallable, Category = "Carrying")
-	void DropCarriedItem();
+	void DropCarriedItem(EBacklogType BacklogType);
 
 	UFUNCTION()
 	AFDTaskActor *GetCurrentTask() { return CurrentTaskActor; };
+
+	UFUNCTION(Server, Reliable, Category = "Score")
+	void Server_ChangeTaskCountByType(ETaskType TaskType, int32 Value);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const override;
 
@@ -56,7 +57,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float TurnRate = 45.0f; // Degrees per second
 
-	UPROPERTY(EditAnywhere, Category = "Interact")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	float BugCoefficient = 0.1f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 BugChanceWitoutTest = 50;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 BugChanceWithTest = 10;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
 	float BaseInteractTime = 3.0f; // Degrees per second
 
 	UPROPERTY(VisibleAnywhere, Category = "Task")
