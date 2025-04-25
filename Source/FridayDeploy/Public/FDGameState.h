@@ -17,19 +17,19 @@ class FRIDAYDEPLOY_API AFDGameState : public AGameState
 public:
 	AFDGameState();
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
+	UPROPERTY(ReplicatedUsing = OnRep_ArtTaskCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 ArtTaskCount;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
+	UPROPERTY(ReplicatedUsing = OnRep_DevelopingTaskCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 DevelopingTaskCount;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
+	UPROPERTY(ReplicatedUsing = OnRep_TestingTaskCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 TestingTaskCount;
 
 	UPROPERTY(ReplicatedUsing = OnRep_BugCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 BugCount;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
+	UPROPERTY(ReplicatedUsing = OnRep_ServerFinishTaskCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 ServerFinishTaskCount;
 
 	UFUNCTION(BlueprintCallable, Category = "Tasks")
@@ -40,10 +40,34 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const override;
 
+	UFUNCTION(BlueprintNativeEvent)
+	void OnBugCountChange();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void OnServerFinishTaskCount();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void OnArtTaskCount();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void OnDevelopingTaskCount();
+
+	UFUNCTION(BlueprintNativeEvent)
+	void OnTestingTaskCount();
+
 protected:
 	UFUNCTION()
 	void OnRep_BugCount();
 
 	UFUNCTION()
-	void OnBugCountChange();
+	void OnRep_ServerFinishTaskCount();
+
+	UFUNCTION()
+	void OnRep_ArtTaskCount();
+
+	UFUNCTION()
+	void OnRep_DevelopingTaskCount();
+
+	UFUNCTION()
+	void OnRep_TestingTaskCount();
 };
