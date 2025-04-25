@@ -26,7 +26,7 @@ public:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 TestingTaskCount;
 
-	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
+	UPROPERTY(ReplicatedUsing = OnRep_BugCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 BugCount;
 
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
@@ -39,4 +39,11 @@ public:
 	void ChangeTaskCountByType(ETaskType TaskType, int32 value);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const override;
+
+protected:
+	UFUNCTION()
+	void OnRep_BugCount();
+
+	UFUNCTION()
+	void OnBugCountChange();
 };

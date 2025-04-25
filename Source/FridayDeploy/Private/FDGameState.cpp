@@ -2,6 +2,8 @@
 
 #include "FDGameState.h"
 #include "FDTaskActor.h"
+#include "FDComputerActor.h"
+#include "EngineUtils.h"
 #include "Net/UnrealNetwork.h"
 
 AFDGameState::AFDGameState()
@@ -63,6 +65,26 @@ void AFDGameState::ChangeTaskCountByType(ETaskType TaskType, int32 Value)
         return;
     case ETaskType::Bug:
         BugCount += Value;
+        OnBugCountChange();
         return;
+    }
+}
+
+void AFDGameState::OnRep_BugCount()
+{
+    OnBugCountChange();
+}
+
+void AFDGameState::OnBugCountChange()
+{
+    // Оповещаем все компьютеры об изменении
+    for (TActorIterator<AFDComputerActor> ActorIt(GetWorld()); ActorIt; ++ActorIt)
+    {
+        AFDComputerActor *ComputerActor = *ActorIt;
+        if (ComputerActor->Type == ETaskType::Server)
+        {
+            ComputerActor->UpdateBugs();
+            break;
+        }
     }
 }
