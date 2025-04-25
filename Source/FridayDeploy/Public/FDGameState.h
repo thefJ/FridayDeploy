@@ -55,7 +55,18 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	void OnTestingTaskCount();
 
+	UFUNCTION(BlueprintNativeEvent)
+	void OnRemainingTime();
+
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, EditAnywhere, BlueprintReadWrite, Category = "Timer")
+	int32 RemainingTime = 300; // 5 минут
+
+	// Обновление таймера
+	void UpdateGameTimer();
+
 protected:
+	virtual void BeginPlay() override;
+
 	UFUNCTION()
 	void OnRep_BugCount();
 
@@ -70,4 +81,10 @@ protected:
 
 	UFUNCTION()
 	void OnRep_TestingTaskCount();
+
+	UFUNCTION()
+	void OnRep_RemainingTime();
+
+private:
+	FTimerHandle TimerHandle;
 };

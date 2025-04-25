@@ -2,12 +2,29 @@
 
 #include "FDGameState.h"
 #include "FDTaskActor.h"
+#include "FDGameMode.h"
 #include "FDComputerActor.h"
 #include "EngineUtils.h"
 #include "Net/UnrealNetwork.h"
 
 AFDGameState::AFDGameState()
 {
+}
+
+void AFDGameState::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (GetLocalRole() == ROLE_Authority)
+    {
+        // Запускаем таймер (обновление каждую секунду)
+        GetWorld()->GetTimerManager().SetTimer(
+            TimerHandle,
+            this,
+            &AFDGameState::UpdateGameTimer,
+            1.0f,
+            true);
+    }
 }
 
 void AFDGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
@@ -21,6 +38,7 @@ void AFDGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLife
     DOREPLIFETIME(AFDGameState, TestingTaskCount);
     DOREPLIFETIME(AFDGameState, BugCount);
     DOREPLIFETIME(AFDGameState, ServerFinishTaskCount);
+    DOREPLIFETIME(AFDGameState, RemainingTime);
 }
 
 int32 AFDGameState::GetTaskCountByType(ETaskType TaskType) const
@@ -125,6 +143,36 @@ void AFDGameState::OnBugCountChange_Implementation()
         {
             ComputerActor->UpdateBugs();
             break;
+        }
+    }
+}
+
+void AFDGameState::OnRep_RemainingTime()
+{
+    OnRemainingTime();
+}
+
+void AFDGameState::OnRemainingTime_Implementation()
+{
+}
+
+void AFDGameState::UpdateGameTimer()
+{
+    if (GetLocalRole() == ROLE_Authority)
+    {
+        RemainingTime--;
+        OnRemainingTime();
+        OnRep_RemainingTime();
+
+        if (RemainingTime <= 0)
+        {
+            GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+            // Оповещаем GameMode о завершении
+            if (AFDGameMode *GM = Cast<AFDGameMode>(GetWorld()->GetAuthGameMode()))
+            {
+                GM->ShowWidgetToAllPlayers();
+                GM->EndGame();
+            }
         }
     }
 }
