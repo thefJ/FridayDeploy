@@ -42,6 +42,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent)
 	void OnBugCountChange();
+	virtual void OnBugCountChange_Implementation();
 
 	UFUNCTION(BlueprintNativeEvent)
 	void OnServerFinishTaskCount();

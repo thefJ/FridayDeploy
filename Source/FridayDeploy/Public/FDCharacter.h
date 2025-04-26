@@ -16,6 +16,47 @@ public:
 	// Sets default values for this character's properties
 	AFDCharacter();
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *FootstepAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayFootstepAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayFootstepAudio();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_StopFootstepAudio();
+
+	// Мультикаст функция
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopFootstepAudio();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *PushingAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayPushingAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPushingAudio();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_StopPushingAudio();
+
+	// Мультикаст функция
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopPushingAudio();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *TaskCompleteAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayCompleteAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayCompleteAudio();
+
 	UFUNCTION()
 	bool IsCurrentComputerActor(AFDComputerActor *ComputerActor) { return CurrentComputerActor == ComputerActor; };
 
@@ -85,6 +126,9 @@ protected:
 
 	UFUNCTION()
 	void MoveRight(float Value);
+
+	UFUNCTION()
+	void OnMovement(float Value);
 
 	// Interaction
 	UFUNCTION()

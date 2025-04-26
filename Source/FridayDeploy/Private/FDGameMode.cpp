@@ -46,19 +46,72 @@ void AFDGameMode::EndGame()
     {
         if (APlayerController *PC = It->Get())
         {
-            // Отключаем ввод
-            PC->SetIgnoreMoveInput(true);
-            PC->SetIgnoreLookInput(true);
-
-            // Блокируем управление персонажем
-            if (APawn *ControlledPawn = PC->GetPawn())
+            if (PC->IsLocalController())
             {
-                ControlledPawn->DisableInput(PC);
-            }
+                // Отключаем ввод
+                PC->SetIgnoreMoveInput(true);
+                PC->SetIgnoreLookInput(true);
 
-            // Показываем курсор
-            PC->bShowMouseCursor = true;
-            PC->SetInputMode(FInputModeUIOnly());
+                // Блокируем управление персонажем
+                if (APawn *ControlledPawn = PC->GetPawn())
+                {
+                    ControlledPawn->DisableInput(PC);
+                }
+
+                // Показываем курсор
+                PC->bShowMouseCursor = true;
+                PC->SetInputMode(FInputModeUIOnly());
+            }
+        }
+    }
+}
+
+void AFDGameMode::HandleMatchIsWaitingToStart()
+{
+    Super::HandleMatchIsWaitingToStart();
+
+    // Показываем виджет всем игрокам
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (APlayerController *PC = It->Get())
+        {
+            if (PC->IsLocalController())
+            {
+                WaitingWidgetInstance = CreateWidget<UUserWidget>(PC, WaitingWidgetClass);
+                if (WaitingWidgetInstance)
+                {
+                    WaitingWidgetInstance->AddToViewport();
+
+                    // Блокируем игровой ввод
+                    PC->SetInputMode(FInputModeUIOnly());
+                    PC->bShowMouseCursor = true;
+                }
+            }
+        }
+    }
+}
+
+void AFDGameMode::HandleMatchHasStarted()
+{
+    Super::HandleMatchHasStarted();
+
+    // Удаляем виджет ожидания
+    if (WaitingWidgetInstance)
+    {
+        WaitingWidgetInstance->RemoveFromParent();
+        WaitingWidgetInstance = nullptr;
+    }
+
+    // Восстанавливаем управление
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (APlayerController *PC = It->Get())
+        {
+            if (PC->IsLocalController())
+            {
+                PC->SetInputMode(FInputModeGameOnly());
+                PC->bShowMouseCursor = false;
+            }
         }
     }
 }

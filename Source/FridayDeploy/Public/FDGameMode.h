@@ -19,6 +19,9 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<UUserWidget> EndGameWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> WaitingWidgetClass;
+
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowWidgetToAllPlayers();
 
@@ -28,5 +31,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Setting")
 	int32 MinPlayerCount = 2;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Game Time")
+	float WarmupTime = 10.f; // 10 секунд на подготовку
+
 	virtual bool ReadyToStartMatch_Implementation() override;
+
+	virtual void HandleMatchIsWaitingToStart() override;
+	virtual void HandleMatchHasStarted() override;
+
+private:
+	UPROPERTY()
+	UUserWidget *WaitingWidgetInstance;
 };
