@@ -130,7 +130,8 @@ void AFDCharacter::ExecuteInteraction()
 {
 	if (bCanInteract && !bIsInteracting && CurrentComputerActor && !bIsCarrying)
 	{
-		int32 bugCount = GetWorld()->GetGameState<AFDGameState>()->GetTaskCountByType(ETaskType::Bug);
+		AFDGameState *GameState = GetWorld()->GetGameState<AFDGameState>();
+		int32 bugCount = GameState->GetTaskCountByType(ETaskType::Bug);
 		if (CurrentComputerActor->Type == ETaskType::Server && bugCount <= 0)
 		{
 			return;
@@ -153,7 +154,7 @@ void AFDCharacter::ExecuteInteraction()
 			return;
 		}
 
-		float interactTime = BaseInteractTime + (BaseInteractTime * BugCoefficient * bugCount);
+		float interactTime = GameState->BaseInteractTime + (GameState->BaseInteractTime * GameState->BugCoefficient * bugCount);
 
 		if (HasAuthority())
 		{
@@ -250,8 +251,9 @@ void AFDCharacter::DropCarriedItem(EBacklogType BacklogType)
 			{
 				if (BacklogType == EBacklogType::Server)
 				{
+					AFDGameState *GameState = GetWorld()->GetGameState<AFDGameState>();
 					Server_ChangeTaskCountByType(ETaskType::Server, 1);
-					int32 chance = CurrentTaskActor->Type == ETaskType::Testing ? BugChanceWitoutTest : BugChanceWithTest;
+					int32 chance = CurrentTaskActor->Type == ETaskType::Testing ? GameState->BugChanceWitoutTest : GameState->BugChanceWithTest;
 					if (FMath::RandRange(0, 100) <= chance)
 					{
 						Server_ChangeTaskCountByType(ETaskType::Bug, 1);

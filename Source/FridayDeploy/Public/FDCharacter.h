@@ -98,18 +98,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float TurnRate = 45.0f; // Degrees per second
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	float BugCoefficient = 0.1f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	int32 BugChanceWitoutTest = 50;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	int32 BugChanceWithTest = 10;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	float BaseInteractTime = 3.0f; // Degrees per second
-
 	UPROPERTY(VisibleAnywhere, Category = "Task")
 	AFDTaskActor *CurrentTaskActor;
 

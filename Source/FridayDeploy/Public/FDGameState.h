@@ -65,6 +65,18 @@ public:
 	// Обновление таймера
 	void UpdateGameTimer();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	float BugCoefficient = 0.1f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 BugChanceWitoutTest = 50;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 BugChanceWithTest = 10;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	float BaseInteractTime = 3.0f; // Degrees per second
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -85,6 +97,8 @@ protected:
 
 	UFUNCTION()
 	void OnRep_RemainingTime();
+
+	
 
 private:
 	FTimerHandle TimerHandle;
