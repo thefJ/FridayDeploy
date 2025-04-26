@@ -8,6 +8,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/AudioComponent.h"
 #include "Net/UnrealNetwork.h"
 
 // Sets default values
@@ -30,6 +31,21 @@ AFDCharacter::AFDCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative
 	FollowCamera->SetRelativeRotation(FRotator(0, -5, 0));
 	FollowCamera->SetRelativeLocation(FVector(0, 0, 100));
+
+	FootstepAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("FootstepAudio"));
+	FootstepAudioComp->SetupAttachment(GetRootComponent());
+	FootstepAudioComp->bAutoActivate = false;
+	FootstepAudioComp->SetIsReplicated(true);
+
+	PushingAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("PushingAudio"));
+	PushingAudioComp->SetupAttachment(GetRootComponent());
+	PushingAudioComp->bAutoActivate = false;
+	PushingAudioComp->SetIsReplicated(true);
+
+	TaskCompleteAudioComp = CreateDefaultSubobject<UAudioComponent>(TEXT("TaskCompleteAudio"));
+	TaskCompleteAudioComp->SetupAttachment(GetRootComponent());
+	TaskCompleteAudioComp->bAutoActivate = false;
+	TaskCompleteAudioComp->SetIsReplicated(true);
 
 	bReplicates = true;
 	bAlwaysRelevant = true;
@@ -58,6 +74,7 @@ void AFDCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCompone
 		InputComponent->BindAxis("MoveForward", this, &AFDCharacter::MoveForward);
 		InputComponent->BindAxis("MoveRight", this, &AFDCharacter::MoveRight);
 		InputComponent->BindAction("Interact", IE_Pressed, this, &AFDCharacter::Interact);
+		InputComponent->BindAxis("MoveForward", this, &AFDCharacter::OnMovement);
 	}
 }
 
@@ -113,7 +130,8 @@ void AFDCharacter::ExecuteInteraction()
 {
 	if (bCanInteract && !bIsInteracting && CurrentComputerActor && !bIsCarrying)
 	{
-		int32 bugCount = GetWorld()->GetGameState<AFDGameState>()->GetTaskCountByType(ETaskType::Bug);
+		AFDGameState *GameState = GetWorld()->GetGameState<AFDGameState>();
+		int32 bugCount = GameState->GetTaskCountByType(ETaskType::Bug);
 		if (CurrentComputerActor->Type == ETaskType::Server && bugCount <= 0)
 		{
 			return;
@@ -136,10 +154,18 @@ void AFDCharacter::ExecuteInteraction()
 			return;
 		}
 
-		float interactTime = BaseInteractTime + (BaseInteractTime * BugCoefficient * bugCount);
-		UE_LOG(LogTemp, Display, TEXT("interactTime %f"), interactTime);
+		float interactTime = GameState->BaseInteractTime + (GameState->BaseInteractTime * GameState->BugCoefficient * bugCount);
 
-		// Start timer for 3 seconds
+		if (HasAuthority())
+		{
+			Multicast_PlayPushingAudio();
+		}
+		else
+		{
+			Server_PlayPushingAudio();
+		}
+
+		// Start timer for interactTime seconds
 		GetWorld()->GetTimerManager().SetTimer(
 			InteractionTimerHandle,
 			this,
@@ -169,6 +195,15 @@ void AFDCharacter::Interact()
 
 void AFDCharacter::FinishInteraction()
 {
+	if (HasAuthority())
+	{
+		Multicast_StopPushingAudio();
+	}
+	else
+	{
+		Server_StopPushingAudio();
+	}
+
 	// Enable movement
 	if (GetCharacterMovement())
 	{
@@ -216,8 +251,9 @@ void AFDCharacter::DropCarriedItem(EBacklogType BacklogType)
 			{
 				if (BacklogType == EBacklogType::Server)
 				{
+					AFDGameState *GameState = GetWorld()->GetGameState<AFDGameState>();
 					Server_ChangeTaskCountByType(ETaskType::Server, 1);
-					int32 chance = CurrentTaskActor->Type == ETaskType::Testing ? BugChanceWitoutTest : BugChanceWithTest;
+					int32 chance = CurrentTaskActor->Type == ETaskType::Testing ? GameState->BugChanceWitoutTest : GameState->BugChanceWithTest;
 					if (FMath::RandRange(0, 100) <= chance)
 					{
 						Server_ChangeTaskCountByType(ETaskType::Bug, 1);
@@ -227,6 +263,9 @@ void AFDCharacter::DropCarriedItem(EBacklogType BacklogType)
 				{
 					Server_ChangeTaskCountByType(CurrentTaskActor->Type, 1);
 				}
+
+				Server_PlayCompleteAudio();
+				Multicast_PlayCompleteAudio();
 			}
 
 			CurrentTaskActor->Destroy();
@@ -280,6 +319,9 @@ void AFDCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLife
 	DOREPLIFETIME(AFDCharacter, bCanInteract);
 	DOREPLIFETIME(AFDCharacter, bIsInteracting);
 	DOREPLIFETIME(AFDCharacter, bIsCarrying);
+	DOREPLIFETIME(AFDCharacter, FootstepAudioComp);
+	DOREPLIFETIME(AFDCharacter, PushingAudioComp);
+	DOREPLIFETIME(AFDCharacter, TaskCompleteAudioComp);
 }
 
 void AFDCharacter::Server_ChangeTaskCountByType_Implementation(ETaskType TaskType, int32 Value)
@@ -287,10 +329,125 @@ void AFDCharacter::Server_ChangeTaskCountByType_Implementation(ETaskType TaskTyp
 	if (!IsValid(this))
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("Server_ChangeTaskCountByType_Implementation"));
-
 	if (AFDGameState *GS = GetWorld()->GetGameState<AFDGameState>())
 	{
 		GS->ChangeTaskCountByType(TaskType, Value); // GameState сам обрабатывает репликацию
+	}
+}
+
+bool AFDCharacter::Server_PlayPushingAudio_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_PlayPushingAudio_Implementation()
+{
+	Multicast_PlayPushingAudio();
+}
+
+void AFDCharacter::Multicast_PlayPushingAudio_Implementation()
+{
+	if (PushingAudioComp && !PushingAudioComp->IsPlaying())
+	{
+		PushingAudioComp->Play();
+	}
+}
+
+bool AFDCharacter::Server_PlayFootstepAudio_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_PlayFootstepAudio_Implementation()
+{
+	Multicast_PlayFootstepAudio();
+}
+
+void AFDCharacter::Multicast_PlayFootstepAudio_Implementation()
+{
+	if (FootstepAudioComp && !FootstepAudioComp->IsPlaying())
+	{
+		FootstepAudioComp->Play();
+	}
+}
+
+void AFDCharacter::OnMovement(float Value)
+{
+	if (GetVelocity().Size() > 1)
+	{
+		if (HasAuthority())
+		{
+			Multicast_PlayFootstepAudio();
+		}
+		else
+		{
+			Server_PlayFootstepAudio();
+		}
+	}
+	else
+	{
+		if (HasAuthority())
+		{
+			Multicast_StopFootstepAudio();
+		}
+		else
+		{
+			Server_StopFootstepAudio();
+		}
+	}
+}
+
+bool AFDCharacter::Server_StopPushingAudio_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_StopPushingAudio_Implementation()
+{
+	Multicast_StopPushingAudio();
+}
+
+void AFDCharacter::Multicast_StopPushingAudio_Implementation()
+{
+	if (PushingAudioComp && PushingAudioComp->IsPlaying())
+	{
+		PushingAudioComp->Stop(); // Основной метод остановки
+	}
+}
+
+bool AFDCharacter::Server_StopFootstepAudio_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_StopFootstepAudio_Implementation()
+{
+	Multicast_StopFootstepAudio();
+}
+
+void AFDCharacter::Multicast_StopFootstepAudio_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Hello World"));
+	if (FootstepAudioComp && FootstepAudioComp->IsPlaying())
+	{
+		FootstepAudioComp->Stop(); // Основной метод остановки
+	}
+}
+
+bool AFDCharacter::Server_PlayCompleteAudio_Validate()
+{
+	return true;
+}
+
+void AFDCharacter::Server_PlayCompleteAudio_Implementation()
+{
+	Multicast_PlayCompleteAudio();
+}
+
+void AFDCharacter::Multicast_PlayCompleteAudio_Implementation()
+{
+	if (TaskCompleteAudioComp)
+	{
+		TaskCompleteAudioComp->Play();
 	}
 }

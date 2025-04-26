@@ -88,6 +88,7 @@ void AFDGameState::ChangeTaskCountByType(ETaskType TaskType, int32 Value)
     case ETaskType::Bug:
         BugCount += Value;
         OnBugCountChange();
+        OnBugCountChange_Implementation();
         return;
     }
 }
@@ -95,6 +96,7 @@ void AFDGameState::ChangeTaskCountByType(ETaskType TaskType, int32 Value)
 void AFDGameState::OnRep_BugCount()
 {
     OnBugCountChange();
+    OnBugCountChange_Implementation();
 }
 
 void AFDGameState::OnRep_ServerFinishTaskCount()

@@ -16,6 +16,47 @@ public:
 	// Sets default values for this character's properties
 	AFDCharacter();
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *FootstepAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayFootstepAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayFootstepAudio();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_StopFootstepAudio();
+
+	// Мультикаст функция
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopFootstepAudio();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *PushingAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayPushingAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPushingAudio();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_StopPushingAudio();
+
+	// Мультикаст функция
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopPushingAudio();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated)
+	UAudioComponent *TaskCompleteAudioComp;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayCompleteAudio();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayCompleteAudio();
+
 	UFUNCTION()
 	bool IsCurrentComputerActor(AFDComputerActor *ComputerActor) { return CurrentComputerActor == ComputerActor; };
 
@@ -57,18 +98,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float TurnRate = 45.0f; // Degrees per second
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	float BugCoefficient = 0.1f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	int32 BugChanceWitoutTest = 50;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	int32 BugChanceWithTest = 10;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
-	float BaseInteractTime = 3.0f; // Degrees per second
-
 	UPROPERTY(VisibleAnywhere, Category = "Task")
 	AFDTaskActor *CurrentTaskActor;
 
@@ -85,6 +114,9 @@ protected:
 
 	UFUNCTION()
 	void MoveRight(float Value);
+
+	UFUNCTION()
+	void OnMovement(float Value);
 
 	// Interaction
 	UFUNCTION()
