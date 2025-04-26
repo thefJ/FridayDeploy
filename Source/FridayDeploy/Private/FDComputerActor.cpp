@@ -35,6 +35,7 @@ void AFDComputerActor::Tick(float DeltaTime)
 
 void AFDComputerActor::UpdateBugs()
 {
+	UE_LOG(LogTemp, Warning, TEXT("BB World"));
 	if (AFDGameState *GS = GetWorld()->GetGameState<AFDGameState>())
 	{
 		int32 TargetCount = FMath::CeilToInt(GS->BugCount * ViewBugCoefficient);
@@ -60,13 +61,12 @@ void AFDComputerActor::SpawnBugs(int32 Count)
 	{
 		FVector SpawnLocation = GetActorLocation() +
 								FVector(
-									FMath::FRandRange(-50.f, 50.f),
-									FMath::FRandRange(-50.f, 50.f),
-									FMath::FRandRange(10.f, 30.f));
+									FMath::FRandRange(0, 50.f),
+									0.0f,
+									FMath::FRandRange(10.f, 50.f));
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 
-		// GetWorld()->SpawnActor<AFDTaskActor>(CurrentComputerActor->GetTaskActor(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
 		auto NewBug = GetWorld()->SpawnActor<AFDBugActor>(Bug, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
 
 		if (NewBug)

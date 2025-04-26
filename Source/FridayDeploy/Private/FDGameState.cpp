@@ -2,12 +2,29 @@
 
 #include "FDGameState.h"
 #include "FDTaskActor.h"
+#include "FDGameMode.h"
 #include "FDComputerActor.h"
 #include "EngineUtils.h"
 #include "Net/UnrealNetwork.h"
 
 AFDGameState::AFDGameState()
 {
+}
+
+void AFDGameState::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (GetLocalRole() == ROLE_Authority)
+    {
+        // Запускаем таймер (обновление каждую секунду)
+        GetWorld()->GetTimerManager().SetTimer(
+            TimerHandle,
+            this,
+            &AFDGameState::UpdateGameTimer,
+            1.0f,
+            true);
+    }
 }
 
 void AFDGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
@@ -21,6 +38,7 @@ void AFDGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLife
     DOREPLIFETIME(AFDGameState, TestingTaskCount);
     DOREPLIFETIME(AFDGameState, BugCount);
     DOREPLIFETIME(AFDGameState, ServerFinishTaskCount);
+    DOREPLIFETIME(AFDGameState, RemainingTime);
 }
 
 int32 AFDGameState::GetTaskCountByType(ETaskType TaskType) const
@@ -53,19 +71,24 @@ void AFDGameState::ChangeTaskCountByType(ETaskType TaskType, int32 Value)
     {
     case ETaskType::Art:
         ArtTaskCount += Value;
+        OnArtTaskCount();
         return;
     case ETaskType::Developing:
         DevelopingTaskCount += Value;
+        OnDevelopingTaskCount();
         return;
     case ETaskType::Testing:
         TestingTaskCount += Value;
+        OnTestingTaskCount();
         return;
     case ETaskType::Server:
         ServerFinishTaskCount += Value;
+        OnServerFinishTaskCount();
         return;
     case ETaskType::Bug:
         BugCount += Value;
         OnBugCountChange();
+        OnBugCountChange_Implementation();
         return;
     }
 }
@@ -73,9 +96,46 @@ void AFDGameState::ChangeTaskCountByType(ETaskType TaskType, int32 Value)
 void AFDGameState::OnRep_BugCount()
 {
     OnBugCountChange();
+    OnBugCountChange_Implementation();
 }
 
-void AFDGameState::OnBugCountChange()
+void AFDGameState::OnRep_ServerFinishTaskCount()
+{
+    OnServerFinishTaskCount();
+}
+
+void AFDGameState::OnServerFinishTaskCount_Implementation()
+{
+}
+
+void AFDGameState::OnRep_ArtTaskCount()
+{
+    OnArtTaskCount();
+}
+
+void AFDGameState::OnArtTaskCount_Implementation()
+{
+}
+
+void AFDGameState::OnRep_DevelopingTaskCount()
+{
+    OnDevelopingTaskCount();
+}
+
+void AFDGameState::OnDevelopingTaskCount_Implementation()
+{
+}
+
+void AFDGameState::OnRep_TestingTaskCount()
+{
+    OnTestingTaskCount();
+}
+
+void AFDGameState::OnTestingTaskCount_Implementation()
+{
+}
+
+void AFDGameState::OnBugCountChange_Implementation()
 {
     // Оповещаем все компьютеры об изменении
     for (TActorIterator<AFDComputerActor> ActorIt(GetWorld()); ActorIt; ++ActorIt)
@@ -85,6 +145,36 @@ void AFDGameState::OnBugCountChange()
         {
             ComputerActor->UpdateBugs();
             break;
+        }
+    }
+}
+
+void AFDGameState::OnRep_RemainingTime()
+{
+    OnRemainingTime();
+}
+
+void AFDGameState::OnRemainingTime_Implementation()
+{
+}
+
+void AFDGameState::UpdateGameTimer()
+{
+    if (GetLocalRole() == ROLE_Authority)
+    {
+        RemainingTime--;
+        OnRemainingTime();
+        OnRep_RemainingTime();
+
+        if (RemainingTime <= 0)
+        {
+            GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+            // Оповещаем GameMode о завершении
+            if (AFDGameMode *GM = Cast<AFDGameMode>(GetWorld()->GetAuthGameMode()))
+            {
+                GM->ShowWidgetToAllPlayers();
+                GM->EndGame();
+            }
         }
     }
 }
