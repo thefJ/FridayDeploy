@@ -9,6 +9,7 @@
 
 AFDGameState::AFDGameState()
 {
+    RemainingTime = MaxRemainTime;
 }
 
 void AFDGameState::BeginPlay()

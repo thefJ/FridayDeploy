@@ -59,8 +59,11 @@ public:
 	UFUNCTION(BlueprintNativeEvent)
 	void OnRemainingTime();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 MaxRemainTime = 300;
+
 	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, EditAnywhere, BlueprintReadWrite, Category = "Timer")
-	int32 RemainingTime = 300; // 5 минут
+	int32 RemainingTime = 0; // 5 минут
 
 	// Обновление таймера
 	void UpdateGameTimer();
@@ -97,8 +100,6 @@ protected:
 
 	UFUNCTION()
 	void OnRep_RemainingTime();
-
-	
 
 private:
 	FTimerHandle TimerHandle;
