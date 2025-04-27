@@ -17,6 +17,9 @@ class FRIDAYDEPLOY_API AFDGameState : public AGameState
 public:
 	AFDGameState();
 
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> EndGameWidgetClass;
+
 	UPROPERTY(ReplicatedUsing = OnRep_ArtTaskCount, EditAnywhere, BlueprintReadWrite, Category = "Task Tracking")
 	int32 ArtTaskCount;
 
@@ -62,8 +65,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
 	int32 MaxRemainTime = 300;
 
-	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, EditAnywhere, BlueprintReadWrite, Category = "Timer")
+	UPROPERTY(ReplicatedUsing = OnRep_RemainingTime, VisibleAnywhere, BlueprintReadOnly, Category = "Timer")
 	int32 RemainingTime = 0; // 5 минут
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
+	int32 TaskToWin = 100;
 
 	// Обновление таймера
 	void UpdateGameTimer();
@@ -79,6 +85,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BalanceSetting")
 	float BaseInteractTime = 3.0f; // Degrees per second
+
+	virtual void HandleMatchHasStarted() override;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastEndGame();
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowWidgetToAllPlayers();
 
 protected:
 	virtual void BeginPlay() override;

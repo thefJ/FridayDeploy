@@ -427,7 +427,6 @@ void AFDCharacter::Server_StopFootstepAudio_Implementation()
 
 void AFDCharacter::Multicast_StopFootstepAudio_Implementation()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Hello World"));
 	if (FootstepAudioComp && FootstepAudioComp->IsPlaying())
 	{
 		FootstepAudioComp->Stop(); // Основной метод остановки

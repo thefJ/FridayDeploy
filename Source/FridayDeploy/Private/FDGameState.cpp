@@ -9,12 +9,18 @@
 
 AFDGameState::AFDGameState()
 {
-    RemainingTime = MaxRemainTime;
 }
 
 void AFDGameState::BeginPlay()
 {
     Super::BeginPlay();
+
+    RemainingTime = MaxRemainTime;
+}
+
+void AFDGameState::HandleMatchHasStarted()
+{
+    Super::HandleMatchHasStarted();
 
     if (GetLocalRole() == ROLE_Authority)
     {
@@ -165,7 +171,6 @@ void AFDGameState::UpdateGameTimer()
     {
         RemainingTime--;
         OnRemainingTime();
-        OnRep_RemainingTime();
 
         if (RemainingTime <= 0)
         {
@@ -173,8 +178,58 @@ void AFDGameState::UpdateGameTimer()
             // Оповещаем GameMode о завершении
             if (AFDGameMode *GM = Cast<AFDGameMode>(GetWorld()->GetAuthGameMode()))
             {
-                GM->ShowWidgetToAllPlayers();
                 GM->EndGame();
+            }
+        }
+    }
+}
+
+void AFDGameState::ShowWidgetToAllPlayers()
+{
+    if (!EndGameWidgetClass)
+    {
+        return;
+    }
+
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        APlayerController *PC = It->Get();
+        if (PC && PC->IsLocalController()) // Критически важно!
+        {
+
+            UUserWidget *Widget = CreateWidget<UUserWidget>(PC, EndGameWidgetClass);
+            if (Widget)
+            {
+                Widget->AddToViewport();
+            }
+        }
+    }
+}
+
+void AFDGameState::MulticastEndGame_Implementation()
+{
+    ShowWidgetToAllPlayers();
+
+    // 2. Отключаем управление всем игрокам
+    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    {
+        if (APlayerController *PC = It->Get())
+        {
+            if (PC->IsLocalController())
+            {
+                // Отключаем ввод
+                PC->SetIgnoreMoveInput(true);
+                PC->SetIgnoreLookInput(true);
+
+                // Блокируем управление персонажем
+                if (APawn *ControlledPawn = PC->GetPawn())
+                {
+                    ControlledPawn->DisableInput(PC);
+                }
+
+                // Показываем курсор
+                PC->bShowMouseCursor = true;
+                PC->SetInputMode(FInputModeUIOnly());
             }
         }
     }

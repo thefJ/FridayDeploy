@@ -4,6 +4,11 @@
 #include "FDGameState.h"
 #include "Net/UnrealNetwork.h"
 
+AFDGameMode::AFDGameMode()
+{
+    bReplicates = true;
+}
+
 bool AFDGameMode::ReadyToStartMatch_Implementation()
 {
     // Стандартная проверка (ожидание старта + есть игроки)
@@ -15,54 +20,19 @@ bool AFDGameMode::ReadyToStartMatch_Implementation()
     return (GetNumPlayers() >= MinPlayerCount);
 }
 
-void AFDGameMode::ShowWidgetToAllPlayers()
-{
-    if (!EndGameWidgetClass)
-    {
-        return;
-    }
-
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-    {
-        APlayerController *PC = It->Get();
-        if (PC && PC->IsLocalController()) // Критически важно!
-        {
-
-            UUserWidget *Widget = CreateWidget<UUserWidget>(PC, EndGameWidgetClass);
-            if (Widget)
-            {
-                Widget->AddToViewport();
-            }
-        }
-    }
-}
-
 void AFDGameMode::EndGame()
 {
-    // 1. Устанавливаем состояние матча
-    EndMatch();
-
-    // 2. Отключаем управление всем игрокам
-    for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+    if (HasAuthority()) // Проверяем, что мы на сервере
     {
-        if (APlayerController *PC = It->Get())
+        // Логика завершения игры на сервере
+        // ...
+
+        EndMatch();
+        // Отправляем вызов всем клиентам
+
+        if (AFDGameState *GS = GetGameState<AFDGameState>())
         {
-            if (PC->IsLocalController())
-            {
-                // Отключаем ввод
-                PC->SetIgnoreMoveInput(true);
-                PC->SetIgnoreLookInput(true);
-
-                // Блокируем управление персонажем
-                if (APawn *ControlledPawn = PC->GetPawn())
-                {
-                    ControlledPawn->DisableInput(PC);
-                }
-
-                // Показываем курсор
-                PC->bShowMouseCursor = true;
-                PC->SetInputMode(FInputModeUIOnly());
-            }
+            GS->MulticastEndGame();
         }
     }
 }
