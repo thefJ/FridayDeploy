@@ -409,6 +409,7 @@ void AFDCharacter::Server_StopPushingAudio_Implementation()
 
 void AFDCharacter::Multicast_StopPushingAudio_Implementation()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Stop sound"));
 	if (PushingAudioComp && PushingAudioComp->IsPlaying())
 	{
 		PushingAudioComp->Stop(); // Основной метод остановки
